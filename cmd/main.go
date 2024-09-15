@@ -1,15 +1,11 @@
 package main
 
-import (
-	"fmt"
-
-	"github.com/sphierex/blockchain-go/internal"
-)
+import "os"
 
 func main() {
-	bc := internal.NewBlockchain()
-	bc.AddBlock("Send 1 BTC to Ivan")
-	bc.AddBlock("Send 2 more BTC TO Ivan")
+	app := NewBlockchainApp()
 
-	fmt.Println(bc)
+	if err := app.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

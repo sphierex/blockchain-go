@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"github.com/sphierex/blockchain-go/pkg"
 	"math"
 	"math/big"
@@ -48,14 +47,14 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 	var hash [32]byte
 	nonce := 0
 
-	fmt.Printf("Mining the block containg \"%s\"\n", pow.block.Data)
+	// fmt.Printf("Mining the block containg \"%s\"\n", pow.block.Data)
 
 	for nonce < maxNonce {
 		data := pow.prepareData(nonce)
-		hash := sha256.Sum256(data)
+		hash = sha256.Sum256(data)
 		hashInt.SetBytes(hash[:])
 		if hashInt.Cmp(pow.target) == -1 {
-			fmt.Printf("\r%x\n", hash)
+			// fmt.Printf("\r%x\n", hash)
 			break
 		} else {
 			nonce++

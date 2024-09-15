@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"strconv"
 	"time"
 )
@@ -47,6 +48,20 @@ func (b *Block) SetHash() {
 
 	hash := sha256.Sum256(headers)
 	b.Hash = hash[:]
+}
+
+func (b *Block) Serialize() []byte {
+	var buf bytes.Buffer
+	_ = json.NewEncoder(&buf).Encode(b)
+
+	return buf.Bytes()
+}
+
+func deserialize(buf []byte) *Block {
+	var block Block
+	_ = json.NewDecoder(bytes.NewReader(buf)).Decode(&block)
+
+	return &block
 }
 
 // NewGenesisBlock creates and returns genesis Block.
