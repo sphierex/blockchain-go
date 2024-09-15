@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"strconv"
 	"testing"
 )
 
@@ -13,5 +14,8 @@ func TestBlockchain_AddBlock(t *testing.T) {
 		t.Logf("Prev. hash: %x\n", block.PrevBlockHash)
 		t.Logf("Data: %s\n", block.Data)
 		t.Logf("Hash: %x\n", block.Hash)
+
+		pow := NewProofOfWork(block)
+		t.Logf("POW: %s\n", strconv.FormatBool(pow.Validate()))
 	}
 }

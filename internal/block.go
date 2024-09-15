@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"strconv"
 	"time"
@@ -12,6 +13,7 @@ type Block struct {
 	Data          []byte // 区块存储的信息
 	PrevBlockHash []byte // 前一个块的 Hash
 	Hash          []byte // 当前块的 Hash
+	Nonce         int    // 区块的随机数
 }
 
 // NewBlock creates and returns Block.
@@ -21,8 +23,14 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 		Data:          []byte(data),
 		PrevBlockHash: prevBlockHash,
 		Hash:          []byte{},
+		Nonce:         0,
 	}
-	b.SetHash()
+
+	pow := NewProofOfWork(b)
+	nonce, hash := pow.Run()
+
+	b.Hash = hash[:]
+	b.Nonce = nonce
 
 	return b
 }
@@ -31,10 +39,11 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 func (b *Block) SetHash() {
 	timestamp := []byte(strconv.FormatInt(b.Timestamp, 10))
 
-	var headers []byte
-	headers = append(headers, b.PrevBlockHash...)
-	headers = append(headers, b.Data...)
-	headers = append(headers, timestamp...)
+	headers := bytes.Join([][]byte{
+		b.PrevBlockHash,
+		b.Data,
+		timestamp,
+	}, []byte{})
 
 	hash := sha256.Sum256(headers)
 	b.Hash = hash[:]
