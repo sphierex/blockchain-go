@@ -3,29 +3,22 @@ package internal
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
-	"strconv"
+	"encoding/gob"
 	"time"
 )
 
 // Block represents a block in the blockchain.
 type Block struct {
-	Timestamp     int64  // 区块创建的时间
-	Data          []byte // 区块存储的信息
-	PrevBlockHash []byte // 前一个块的 Hash
-	Hash          []byte // 当前块的 Hash
-	Nonce         int    // 区块的随机数
+	Timestamp     int64          // 区块创建的时间
+	Transactions  []*Transaction // 区块存储的信息
+	PrevBlockHash []byte         // 前一个块的 Hash
+	Hash          []byte         // 当前块的 Hash
+	Nonce         int            // 区块的随机数
 }
 
 // NewBlock creates and returns Block.
-func NewBlock(data string, prevBlockHash []byte) *Block {
-	b := &Block{
-		Timestamp:     time.Now().Unix(),
-		Data:          []byte(data),
-		PrevBlockHash: prevBlockHash,
-		Hash:          []byte{},
-		Nonce:         0,
-	}
+func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block {
+	b := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0}
 
 	pow := NewProofOfWork(b)
 	nonce, hash := pow.Run()
@@ -36,35 +29,33 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 	return b
 }
 
-// SetHash calculates and sets the block hash.
-func (b *Block) SetHash() {
-	timestamp := []byte(strconv.FormatInt(b.Timestamp, 10))
+// NewGenesisBlock creates and returns genesis Block.
+func NewGenesisBlock(coinbase *Transaction) *Block {
+	return NewBlock([]*Transaction{coinbase}, []byte{})
+}
 
-	headers := bytes.Join([][]byte{
-		b.PrevBlockHash,
-		b.Data,
-		timestamp,
-	}, []byte{})
+func (b *Block) HashTransactions() []byte {
+	var txHashes [][]byte
+	var txHash [32]byte
 
-	hash := sha256.Sum256(headers)
-	b.Hash = hash[:]
+	for _, tx := range b.Transactions {
+		txHashes = append(txHashes, tx.ID)
+	}
+	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+
+	return txHash[:]
 }
 
 func (b *Block) Serialize() []byte {
 	var buf bytes.Buffer
-	_ = json.NewEncoder(&buf).Encode(b)
+	_ = gob.NewEncoder(&buf).Encode(b)
 
 	return buf.Bytes()
 }
 
 func deserialize(buf []byte) *Block {
 	var block Block
-	_ = json.NewDecoder(bytes.NewReader(buf)).Decode(&block)
+	_ = gob.NewDecoder(bytes.NewReader(buf)).Decode(&block)
 
 	return &block
-}
-
-// NewGenesisBlock creates and returns genesis Block.
-func NewGenesisBlock() *Block {
-	return NewBlock("Genesis Block", []byte{})
 }

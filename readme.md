@@ -9,4 +9,5 @@ a simple blockchain demo for learning
 
 1. part1: Basic Prototype [commit 1b242f4](https://github.com/sphierex/blockchain-go/commit/1b242f4c55de89e43f0fb7881e33c275b36cb048)
 2. part2: Proof-of-Work [commit fdf3149](https://github.com/sphierex/blockchain-go/commit/fdf3149cf5a4b614ebaed5427d51b8451f946ca3)
-3. part3: Persistence and Cli
+3. part3: Persistence and Cli [commit 77b2ded](https://github.com/sphierex/blockchain-go/commit/77b2dededf8c9d069e82dd1d30ea19c9ff826e46)
+4. part4: Transaction 1

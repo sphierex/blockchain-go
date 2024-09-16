@@ -1,9 +1,13 @@
 package main
 
-import "os"
+import (
+	"os"
+
+	"github.com/sphierex/blockchain-go/cmd/handlers"
+)
 
 func main() {
-	app := NewBlockchainApp()
+	app := handlers.NewBlockchainApp()
 
 	if err := app.Execute(); err != nil {
 		os.Exit(1)
