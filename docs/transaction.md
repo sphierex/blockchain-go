@@ -38,7 +38,27 @@
 - 交易验证：网络中的节点验证交易的合法性，矿工将交易打包进区块。
 - 接收方：接受新的 UTXO，可以在后续交易中使用这些 UTXO 作为输入。
 
+## 地址
+
+在比特币中，你的身份是存储在你的计算机上（或存储在其它可以访问的地方）的一对（或多对）私钥和公钥。
+比特币依靠多种加密算法来创建这些密钥，并保证时间上其它人无法没在没有密钥的情况下访问你的比特币。
+
+公钥加密算法使用一对密钥：公钥和私钥。公钥并不敏感，可以向任何人披露。
+
+## 公钥获取地址的过程
+
+Base58 算法。相较于 Base64 算法。删除了一些字母0（零），O(大写o)，I（大写i），l（小写l），+，/ 符号。
+
+公钥：Base58Encode(Version + Public key hash (RIPEMD160(SHA256(PubKey))) + Checksum(Sha256(Sha256(PubKeyHash))))
+
+## 命令
+
+
+```shell
+go run cmd/main.go send --from fromAccount --to toAccount --amount num
+``` 
 
 ## 参考资料
 - [Transaction 1](https://jeiwan.net/posts/building-blockchain-in-go-part-4/)
 - [Bitcoin Transaction](https://en.bitcoin.it/wiki/Transaction)
+- [ECDSA](https://www.bilibili.com/video/BV1BY411M74G)

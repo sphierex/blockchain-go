@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/sphierex/blockchain-go/pkg"
 	"os"
 	"strconv"
 
@@ -22,7 +23,7 @@ func NewBlockchainApp() *BlockchainApp {
 		Use:   "blockchain",
 		Short: "blockchain-go",
 	}
-	ba.rootCmd.AddCommand(ba.printCmd(), ba.balanceCmd(), ba.sendCmd(), ba.createCmd())
+	ba.rootCmd.AddCommand(ba.printCmd(), ba.balanceCmd(), ba.sendCmd(), ba.createBlockchainCmd(), ba.createAccount())
 
 	return ba
 }
@@ -31,13 +32,30 @@ func (ba *BlockchainApp) Execute() error {
 	return ba.rootCmd.Execute()
 }
 
-func (ba *BlockchainApp) createCmd() *cobra.Command {
+func (ba *BlockchainApp) createBlockchainCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "create",
+		Use: "create-blockchain",
 		Run: func(cmd *cobra.Command, args []string) {
 			address := args[0]
 			internal.CreateBlockchain(address)
 			fmt.Println("Done!")
+		},
+	}
+}
+
+func (ba *BlockchainApp) createAccount() *cobra.Command {
+	return &cobra.Command{
+		Use: "create-account",
+		Run: func(cmd *cobra.Command, args []string) {
+			wallets, _ := internal.NewWallets()
+			address := wallets.Create()
+			err := wallets.SaveToFile()
+			if err != nil {
+				fmt.Printf("wallet save error: %s\r\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Your new address: %s\n", address)
 		},
 	}
 }
@@ -75,7 +93,9 @@ func (ba *BlockchainApp) balanceCmd() *cobra.Command {
 			balance := 0
 
 			bc, _ := internal.NewBlockchain()
-			utxos := bc.FindUTXO(address)
+			pubKeyHash := pkg.Base58Decode([]byte(address))
+			pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+			utxos := bc.FindUTXO(pubKeyHash)
 			for _, out := range utxos {
 				balance += out.Value
 			}

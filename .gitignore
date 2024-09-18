@@ -32,3 +32,4 @@ go.work.sum
 # runtime
 internal/blochchain.db
 blochchain.db
+*.dat
