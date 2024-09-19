@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	version            = byte(0x00)
+	accountVersion     = byte(0x00)
 	addressChecksumLen = 4
 )
 
@@ -30,7 +31,7 @@ func NewAccount() *Account {
 func (a *Account) GetAddress() []byte {
 	pubKeyHash := HashPubKey(a.PublicKey)
 
-	versionPayload := append([]byte{version}, pubKeyHash...)
+	versionPayload := append([]byte{accountVersion}, pubKeyHash...)
 	checksum := checksum(versionPayload)
 
 	fullPayload := append(versionPayload, checksum...)
@@ -61,4 +62,14 @@ func newKeyPair() (ecdsa.PrivateKey, []byte) {
 	pubKey := append(private.PublicKey.X.Bytes(), private.PublicKey.Y.Bytes()...)
 
 	return *private, pubKey
+}
+
+func ValidateAddress(address string) bool {
+	pubKeyHash := pkg.Base58Decode([]byte(address))
+	actualChecksum := pubKeyHash[len(pubKeyHash)-addressChecksumLen:]
+	version := pubKeyHash[0]
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-addressChecksumLen]
+	targetChecksum := checksum(append([]byte{version}, pubKeyHash...))
+
+	return bytes.Compare(actualChecksum, targetChecksum) == 0
 }

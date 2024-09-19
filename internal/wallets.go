@@ -8,16 +8,16 @@ import (
 	"os"
 )
 
-const walletFile = "wallet.dat"
+const walletFile = "wallet_%s.dat"
 
 type Wallets struct {
 	Accounts map[string]*Account
 }
 
-func NewWallets() (*Wallets, error) {
+func NewWallets(nodeId string) (*Wallets, error) {
 	wallets := Wallets{}
 	wallets.Accounts = make(map[string]*Account)
-	err := wallets.LoadFromFile()
+	err := wallets.LoadFromFile(nodeId)
 
 	return &wallets, err
 }
@@ -49,12 +49,13 @@ type EllipticCurveWrapper struct {
 	Curve elliptic.Curve
 }
 
-func (ws *Wallets) LoadFromFile() error {
-	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
+func (ws *Wallets) LoadFromFile(nodeId string) error {
+	sWalletFile := fmt.Sprintf(walletFile, nodeId)
+	if _, err := os.Stat(sWalletFile); os.IsNotExist(err) {
 		return err
 	}
 
-	content, err := os.ReadFile(walletFile)
+	content, err := os.ReadFile(sWalletFile)
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,8 @@ func (ws *Wallets) LoadFromFile() error {
 	return nil
 }
 
-func (ws *Wallets) SaveToFile() error {
+func (ws *Wallets) SaveToFile(nodeId string) error {
+	sWalletFile := fmt.Sprintf(walletFile, nodeId)
 	var content bytes.Buffer
 
 	gob.Register(elliptic.P256())
@@ -81,7 +83,7 @@ func (ws *Wallets) SaveToFile() error {
 		return err
 	}
 
-	err = os.WriteFile(walletFile, content.Bytes(), 0644)
+	err = os.WriteFile(sWalletFile, content.Bytes(), 0644)
 	if err != nil {
 		return err
 	}

@@ -3,16 +3,18 @@ package internal
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/gob"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	bolt "go.etcd.io/bbolt"
 )
 
 const (
-	dbPath              = "blochchain.db"
+	dbPath              = "blochchain_%s.db"
 	blocksBucket        = "blocks"
 	genesisCoinbaseData = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
 )
@@ -24,13 +26,14 @@ type Blockchain struct {
 }
 
 // NewBlockchain creates a new Blockchain with genesis Block.
-func NewBlockchain() (*Blockchain, error) {
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+func NewBlockchain(nodeID string) (*Blockchain, error) {
+	subDbPath := fmt.Sprintf(dbPath, nodeID)
+	if _, err := os.Stat(subDbPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("no existing blockchain found. Create one first")
 	}
 
 	var tip []byte
-	db, err := bolt.Open(dbPath, 0600, nil)
+	db, err := bolt.Open(subDbPath, 0600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("open invalid: %w", err)
 	}
@@ -49,14 +52,15 @@ func NewBlockchain() (*Blockchain, error) {
 	return &Blockchain{tip, db}, nil
 }
 
-func CreateBlockchain(address string) *Blockchain {
-	if _, err := os.Stat(dbPath); os.IsExist(err) {
+func CreateBlockchain(address string, nodeId string) *Blockchain {
+	subDbPath := fmt.Sprintf(dbPath, nodeId)
+	if _, err := os.Stat(subDbPath); os.IsExist(err) {
 		os.Exit(1)
 		return nil
 	}
 
 	var tip []byte
-	db, err := bolt.Open(dbPath, 0600, nil)
+	db, err := bolt.Open(subDbPath, 0600, nil)
 	if err != nil {
 		return nil
 	}
@@ -92,10 +96,22 @@ func CreateBlockchain(address string) *Blockchain {
 // MineBlock mines a new block with the provided transactions.
 func (bc *Blockchain) MineBlock(transactions []*Transaction) (*Block, error) {
 	var lastHash []byte
+	var lastHeight int
+
+	for _, tx := range transactions {
+		if bc.VerifyTransaction(tx) != true {
+			log.Panic("ERROR: Invalid transaction")
+		}
+	}
 
 	err := bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		lastHash = b.Get([]byte("latest"))
+
+		blockData := b.Get(lastHash)
+		block := deserialize(blockData)
+
+		lastHeight = block.Height
 
 		return nil
 	})
@@ -103,7 +119,7 @@ func (bc *Blockchain) MineBlock(transactions []*Transaction) (*Block, error) {
 		return nil, err
 	}
 
-	nb := NewBlock(transactions, lastHash)
+	nb := NewBlock(transactions, lastHash, lastHeight+1)
 
 	return nb, bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
@@ -121,6 +137,98 @@ func (bc *Blockchain) MineBlock(transactions []*Transaction) (*Block, error) {
 
 		return nil
 	})
+}
+
+func (bc *Blockchain) AddBlock(block *Block) {
+	err := bc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		blockInDb := b.Get(block.Hash)
+
+		if blockInDb != nil {
+			return nil
+		}
+
+		blockData := block.Serialize()
+		err := b.Put(block.Hash, blockData)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		lastHash := b.Get([]byte("l"))
+		lastBlockData := b.Get(lastHash)
+		lastBlock := deserialize(lastBlockData)
+
+		if block.Height > lastBlock.Height {
+			err = b.Put([]byte("l"), block.Hash)
+			if err != nil {
+				log.Panic(err)
+			}
+			bc.tip = block.Hash
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
+	var block Block
+
+	err := bc.db.View(func(t *bolt.Tx) error {
+		b := t.Bucket([]byte(blocksBucket))
+		blockData := b.Get(blockHash)
+
+		if blockData == nil {
+			return errors.New("block is no found")
+		}
+
+		block = *deserialize(blockData)
+
+		return nil
+	})
+
+	if err != nil {
+		return block, err
+	}
+
+	return block, nil
+}
+
+func (bc *Blockchain) GetBlockHashes() [][]byte {
+	var blocks [][]byte
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+		blocks = append(blocks, block.Hash)
+
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+
+	return blocks
+}
+
+func (bc *Blockchain) GetBestHeight() int {
+	var lastBlock Block
+
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		lastHash := b.Get([]byte("l"))
+		blockData := b.Get(lastHash)
+		lastBlock = *deserialize(blockData)
+
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return lastBlock.Height
 }
 
 // FindUnspentTransactions returns a list of transaction containing unspent outputs.
@@ -307,4 +415,17 @@ func (bi *BlockchainIterator) Next() *Block {
 	bi.currentHash = block.PrevBlockHash
 
 	return block
+}
+
+// DeserializeTransaction deserializes a transaction
+func DeserializeTransaction(data []byte) Transaction {
+	var transaction Transaction
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err := decoder.Decode(&transaction)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return transaction
 }

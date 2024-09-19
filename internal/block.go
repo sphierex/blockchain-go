@@ -14,11 +14,12 @@ type Block struct {
 	PrevBlockHash []byte         // 前一个块的 Hash
 	Hash          []byte         // 当前块的 Hash
 	Nonce         int            // 区块的随机数
+	Height        int
 }
 
 // NewBlock creates and returns Block.
-func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block {
-	b := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0}
+func NewBlock(transactions []*Transaction, prevBlockHash []byte, height int) *Block {
+	b := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0, height}
 
 	pow := NewProofOfWork(b)
 	nonce, hash := pow.Run()
@@ -31,7 +32,7 @@ func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block {
 
 // NewGenesisBlock creates and returns genesis Block.
 func NewGenesisBlock(coinbase *Transaction) *Block {
-	return NewBlock([]*Transaction{coinbase}, []byte{})
+	return NewBlock([]*Transaction{coinbase}, []byte{}, 0)
 }
 
 func (b *Block) HashTransactions() []byte {
