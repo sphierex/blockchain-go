@@ -96,6 +96,19 @@ Base58 算法。相较于 Base64 算法。删除了一些字母0（零），O(�
 4. 将校验和附加到 `Version+PubKeyHash` 组合。
 5. 使用 `Base58` 对组合进行编码 `Version+PubKeyHash+Checknum`
 
+## UTXO SET
+
+**chain-state**
+
+- 'c' + 32-byte transactions hash -> unspent transaction output record for that transaction.
+- 'B' -> 32=byte block hash: the block hash up to which the database represents the unspent transaction output.
+
+`chain-state` 不存储交易。相反，它存储所谓的 UTXO 集，即未使用的交易输出集。除此之外，它还存储“数据库表示未使用交易输出的区块哈希”。
+
+## MerkleTree
+
+每个区块都会构建一个 `Merkle` 树，它从叶子（树的底部）开始，其中叶子是交易哈希（比特币使用双重`sha256`哈希）。叶子的数量必须是偶数，但并非每个区块都包含偶数个交易。
+如果交易数量为奇数，则最后一笔交易将被复制（在树中，不在区块中）。
 
 ## 命令
 
@@ -106,5 +119,8 @@ go run cmd/main.go send --from fromAccount --to toAccount --amount num
 
 ## 参考资料
 - [Transaction 1](https://jeiwan.net/posts/building-blockchain-in-go-part-4/)
+- [Transaction 2](https://jeiwan.net/posts/building-blockchain-in-go-part-6/)
 - [Bitcoin Transaction](https://en.bitcoin.it/wiki/Transaction)
 - [ECDSA](https://www.bilibili.com/video/BV1BY411M74G)
+- [UTXO-SET](https://en.bitcoin.it/wiki/Bitcoin_Core_0.11_(ch_2):_Data_Storage#The_UTXO_set_.28chainstate_leveldb.29)
+- [MerkleTree](https://en.bitcoin.it/wiki/Protocol_documentation#Merkle_Trees)

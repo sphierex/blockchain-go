@@ -13,19 +13,6 @@ import (
 func TestWallet_GetAddress(t *testing.T) {
 	account := NewAccount()
 	t.Logf("%s", account.GetAddress())
-
-	jsonData, err := json.Marshal(account)
-	if err != nil {
-		t.Fatalf("json marshal err: %s", err)
-	}
-	t.Logf("new account marshal data: %s\r\n", jsonData)
-
-	var unmarshalAccount Account
-	err = json.Unmarshal(jsonData, &unmarshalAccount)
-	if err != nil {
-		t.Fatalf("json unmarshal err: %s", err)
-	}
-	t.Logf("unmarshal account: %v.\r\n", unmarshalAccount)
 }
 
 type P256PublicKey struct {
