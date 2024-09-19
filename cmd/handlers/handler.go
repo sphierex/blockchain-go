@@ -23,7 +23,7 @@ func NewBlockchainApp() *BlockchainApp {
 		Use:   "blockchain",
 		Short: "blockchain-go",
 	}
-	ba.rootCmd.AddCommand(ba.printCmd(), ba.balanceCmd(), ba.sendCmd(), ba.createBlockchainCmd(), ba.createAccount())
+	ba.rootCmd.AddCommand(ba.printCmd(), ba.balanceCmd(), ba.sendCmd(), ba.createBlockchainCmd(), ba.createAccount(), ba.rebuildIndex())
 
 	return ba
 }
@@ -37,8 +37,11 @@ func (ba *BlockchainApp) createBlockchainCmd() *cobra.Command {
 		Use: "create-blockchain",
 		Run: func(cmd *cobra.Command, args []string) {
 			address := args[0]
-			internal.CreateBlockchain(address)
+			bc := internal.CreateBlockchain(address)
 			fmt.Println("Done!")
+
+			utxoSet := internal.UtxoSet{Blockchain: bc}
+			utxoSet.ReIndex()
 		},
 	}
 }
@@ -93,9 +96,10 @@ func (ba *BlockchainApp) balanceCmd() *cobra.Command {
 			balance := 0
 
 			bc, _ := internal.NewBlockchain()
+			utxoSet := internal.UtxoSet{Blockchain: bc}
 			pubKeyHash := pkg.Base58Decode([]byte(address))
 			pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
-			utxos := bc.FindUTXO(pubKeyHash)
+			utxos := utxoSet.FindUtxo(pubKeyHash)
 			for _, out := range utxos {
 				balance += out.Value
 			}
@@ -115,13 +119,17 @@ func (ba *BlockchainApp) sendCmd() *cobra.Command {
 		Short: "Send amount of coins from FROM address to TO",
 		Run: func(cmd *cobra.Command, args []string) {
 			bc, _ := internal.NewBlockchain()
-			tx, err := internal.NewUTXOTransaction(from, to, amount, bc)
+			utxoSet := internal.UtxoSet{Blockchain: bc}
+
+			tx, err := internal.NewUTXOTransaction(from, to, amount, &utxoSet)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+			cbTx := internal.NewCoinbaseTX(from, "")
 
-			err = bc.MineBlock([]*internal.Transaction{tx})
+			newBlock, err := bc.MineBlock([]*internal.Transaction{cbTx, tx})
+			utxoSet.Update(newBlock)
 			fmt.Println(err)
 		},
 	}
@@ -135,4 +143,18 @@ func (ba *BlockchainApp) sendCmd() *cobra.Command {
 	_ = sendCmd.MarkFlagRequired("amount")
 
 	return sendCmd
+}
+
+func (ba *BlockchainApp) rebuildIndex() *cobra.Command {
+	return &cobra.Command{
+		Use: "rebuild-index",
+		Run: func(cmd *cobra.Command, args []string) {
+			bc, _ := internal.NewBlockchain()
+			utxoSet := internal.UtxoSet{Blockchain: bc}
+			utxoSet.ReIndex()
+
+			count := utxoSet.CountTransactions()
+			fmt.Printf("There are %d transactions in the utxo set. \n", count)
+		},
+	}
 }

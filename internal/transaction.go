@@ -78,10 +78,31 @@ func NewTXOutput(value int, address string) *TxOutput {
 	return txo
 }
 
+type TxOutputs struct {
+	Values []TxOutput
+}
+
+func (to TxOutputs) Serialize() []byte {
+	var buf bytes.Buffer
+	_ = gob.NewEncoder(&buf).Encode(to)
+
+	return buf.Bytes()
+}
+
+func DeserializeOutputs(data []byte) TxOutputs {
+	var outputs TxOutputs
+	_ = gob.NewDecoder(bytes.NewReader(data)).Decode(&outputs)
+
+	return outputs
+}
+
 // NewCoinbaseTX creates a new coinbase transaction.
 func NewCoinbaseTX(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Reward to '%s'", to)
+		randData := make([]byte, 20)
+		_, _ = rand.Read(randData)
+
+		data = fmt.Sprintf("%x", randData)
 	}
 
 	txIn := TxInput{[]byte{}, -1, nil, []byte(data)}
@@ -93,7 +114,7 @@ func NewCoinbaseTX(to, data string) *Transaction {
 }
 
 // NewUTXOTransaction creates a new transactions.
-func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) (*Transaction, error) {
+func NewUTXOTransaction(from, to string, amount int, utxoSet *UtxoSet) (*Transaction, error) {
 	var inputs []TxInput
 	var outputs []TxOutput
 
@@ -104,7 +125,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) (*Transacti
 	wallet := wallets.GetAccount(from)
 	pubKeyHash := HashPubKey(wallet.PublicKey)
 
-	acc, validOutputs := bc.FindSpendableOutputs(pubKeyHash, amount)
+	acc, validOutputs := utxoSet.FindSpendableOutputs(pubKeyHash, amount)
 	if acc < amount {
 		return nil, fmt.Errorf("insufficient funds")
 	}
@@ -127,7 +148,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) (*Transacti
 
 	tx := Transaction{nil, inputs, outputs}
 	tx.ID = tx.Hash()
-	bc.SignTransaction(&tx, wallet.PrivateKey)
+	utxoSet.Blockchain.SignTransaction(&tx, wallet.PrivateKey)
 
 	return &tx, nil
 }

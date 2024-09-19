@@ -90,7 +90,7 @@ func CreateBlockchain(address string) *Blockchain {
 }
 
 // MineBlock mines a new block with the provided transactions.
-func (bc *Blockchain) MineBlock(transactions []*Transaction) error {
+func (bc *Blockchain) MineBlock(transactions []*Transaction) (*Block, error) {
 	var lastHash []byte
 
 	err := bc.db.View(func(tx *bolt.Tx) error {
@@ -100,12 +100,12 @@ func (bc *Blockchain) MineBlock(transactions []*Transaction) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	nb := NewBlock(transactions, lastHash)
 
-	return bc.db.Update(func(tx *bolt.Tx) error {
+	return nb, bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		err := b.Put(nb.Hash, nb.Serialize())
 		if err != nil {
@@ -169,15 +169,41 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 }
 
 // FindUTXO finds and returns all unspent transaction outputs.
-func (bc *Blockchain) FindUTXO(pubKeyHash []byte) []TxOutput {
-	var utxos []TxOutput
-	unspentTransactions := bc.FindUnspentTransactions(pubKeyHash)
+func (bc *Blockchain) FindUTXO() map[string]TxOutputs {
+	utxos := make(map[string]TxOutputs)
+	spentTxs := make(map[string][]int)
+	bci := bc.Iterator()
 
-	for _, tx := range unspentTransactions {
-		for _, out := range tx.Vout {
-			if out.IsLockedWithKey(pubKeyHash) {
-				utxos = append(utxos, out)
+	for {
+		block := bci.Next()
+
+		for _, tx := range block.Transactions {
+			txID := hex.EncodeToString(tx.ID)
+		outputs:
+			for outIndex, out := range tx.Vout {
+				if spentTxs[txID] != nil {
+					for _, spentOutIdx := range spentTxs[txID] {
+						if spentOutIdx == outIndex {
+							continue outputs
+						}
+					}
+				}
+
+				outs := utxos[txID]
+				outs.Values = append(outs.Values, out)
+				utxos[txID] = outs
 			}
+
+			if !tx.IsCoinbase() {
+				for _, in := range tx.Vin {
+					inTxID := hex.EncodeToString(in.TxID)
+					spentTxs[inTxID] = append(spentTxs[inTxID], in.Vout)
+				}
+			}
+		}
+
+		if len(block.PrevBlockHash) == 0 {
+			break
 		}
 	}
 
