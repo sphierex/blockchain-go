@@ -39,3 +39,4 @@ go run cmd/main.go get-balance --address 1CSv68gmr1mMFWjAvjfg5AWgPBhz66jqsF
 ## 参考资料
 - [Jeiwan.net](https://jeiwan.net/)
 - [Blockchain 中文版](https://liuchengxu.gitbook.io/blockchain/)
+- [Protocol doc](https://en.bitcoin.it/wiki/Protocol_documentation)
