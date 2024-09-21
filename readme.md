@@ -1,7 +1,7 @@
 # blockchain-go - 用 golang 从零开始构建区块链系列
 
-[![Actions Status](https://github.com/sphierex/blockchain-go/workflows/main.yml/badge.svg)](https://github.com/sphierex/blockchain-go/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Actions Status](https://github.com/sphierex/blockchain-go/workflows/main.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 **注意：需使用 Golang 1.18.9**
 
