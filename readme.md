@@ -35,3 +35,7 @@ go run cmd/main.go transfer --from 13pGasXsfb6Wcejyxa7kAX5P47av1FM4AF --to 1CSv6
 go run cmd/main.go get-balance --address 13pGasXsfb6Wcejyxa7kAX5P47av1FM4AF
 go run cmd/main.go get-balance --address 1CSv68gmr1mMFWjAvjfg5AWgPBhz66jqsF
 ```
+
+## 参考资料
+- [Jeiwan.net](https://jeiwan.net/)
+- [Blockchain 中文版](https://liuchengxu.gitbook.io/blockchain/)
